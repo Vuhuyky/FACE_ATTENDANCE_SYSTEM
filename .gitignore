@@ -1,0 +1,11 @@
+venv/
+
+__pycache__/
+
+attendance.db
+
+*.pyc
+
+.idea/
+
+.vscode/
