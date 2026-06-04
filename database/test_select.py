@@ -4,11 +4,11 @@ conn = sqlite3.connect("attendance.db")
 
 cursor = conn.cursor()
 
-cursor.execute("SELECT * FROM students")
+cursor.execute("PRAGMA table_info(students)")
 
-students = cursor.fetchall()
+columns = cursor.fetchall()
 
-for student in students:
-    print(student)
+for col in columns:
+    print(col)
 
 conn.close()

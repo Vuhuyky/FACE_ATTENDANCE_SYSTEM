@@ -10,7 +10,7 @@ INSERT INTO students (student_code, full_name, email)
 VALUES (?, ?, ?)
 """, (
     "22010001",
-    "Nguyen Van A",
+    "Vu Huy Ky",
     "a@example.com"
 ))
 
@@ -20,7 +20,7 @@ INSERT INTO students (student_code, full_name, email)
 VALUES (?, ?, ?)
 """, (
     "22010002",
-    "Nguyen Van B",
+    "Nguyen Thanh Hai",
     "b@example.com"
 ))
 
