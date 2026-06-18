@@ -2,6 +2,7 @@ import sqlite3
 
 from datetime import date
 
+today = date.today().isoformat()
 
 conn = sqlite3.connect(
     "attendance.db"
@@ -9,59 +10,50 @@ conn = sqlite3.connect(
 
 cursor = conn.cursor()
 
-today = date.today().isoformat()
-
 # ==========================
-# Kiểm tra đã có session hôm nay chưa
+# Tắt tất cả session cũ
 # ==========================
 
 cursor.execute(
     """
-    SELECT id
-    FROM attendance_sessions
-    WHERE section_id = ?
-    AND session_date = ?
+    UPDATE attendance_sessions
+    SET is_active = 0
+    """
+)
+
+# ==========================
+# Tạo session mới
+# ==========================
+
+cursor.execute(
+    """
+    INSERT INTO attendance_sessions
+    (
+        section_id,
+        session_date,
+        start_time,
+        end_time,
+        is_active
+    )
+    VALUES
+    (
+        ?, ?, ?, ?, ?
+    )
     """,
     (
         1,
-        today
+        today,
+        "07:00:00",
+        "23:59:59",
+        1
     )
 )
 
-session = cursor.fetchone()
+conn.commit()
 
-if session:
-
-    print(
-        f"Session already exists: {session[0]}"
-    )
-
-else:
-
-    cursor.execute(
-        """
-        INSERT INTO attendance_sessions
-        (
-            section_id,
-            session_date,
-            start_time
-        )
-        VALUES
-        (
-            ?, ?, ?
-        )
-        """,
-        (
-            1,
-            today,
-            "07:00:00"
-        )
-    )
-
-    conn.commit()
-
-    print(
-        "Session created!"
-    )
+print(
+    f"Created Session ID = "
+    f"{cursor.lastrowid}"
+)
 
 conn.close()

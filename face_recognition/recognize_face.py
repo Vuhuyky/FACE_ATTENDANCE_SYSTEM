@@ -4,6 +4,13 @@ from datetime import datetime
 from insightface.app import FaceAnalysis
 import time
 
+from face_recognition.draw_face_info import draw_face_info
+
+from face_recognition.draw_utils import (
+    draw_recognized_face,
+    draw_unknown_face
+)
+
 from attendance.attendance import (
     mark_attendance
 )
@@ -17,6 +24,19 @@ from face_recognition.utils import (
     find_best_match
 )
 
+from anti_spoofing.blink_counter import BlinkCounter
+
+from anti_spoofing.liveness_verifier import (
+    LivenessVerifier
+)
+
+from anti_spoofing.blink_detector import (
+    get_eye_landmarks,
+    calculate_ear
+)
+from anti_spoofing.head_pose import (
+    get_head_direction
+)
 # ==========================================
 # 1. Khởi tạo InsightFace
 # ==========================================
@@ -95,6 +115,13 @@ if not cap.isOpened():
     exit()
 
 attendance_cache = {} 
+
+verified_cache = {}
+
+blink_counters = {}
+
+liveness_verifiers = {}
+
 current_session_id = (
     get_current_session()
 )
@@ -185,32 +212,176 @@ while True:
             student_code = best_student[1]
 
             full_name = best_student[2]
-            
-            current_timestamp = time.time()
 
-            last_seen = attendance_cache.get(
-                student_id,
-                0
+            # ==========================
+            # Blink Detection
+            # ==========================
+
+            if student_id not in blink_counters:
+
+                blink_counters[
+                    student_id
+                ] = BlinkCounter()
+
+            if student_id not in liveness_verifiers:
+
+                liveness_verifiers[
+                    student_id
+                ] = LivenessVerifier()
+
+            result = get_eye_landmarks(
+                face
             )
 
-            if current_timestamp - last_seen > 10:
+            ear = 0
 
-                success = mark_attendance(
-                    session_id=current_session_id,
-                    student_id=student_id
+            blink_detected = False
+
+            verified = False
+
+            direction = "CENTER"
+
+            if result:
+
+                left_eye, right_eye = result
+
+                left_ear = calculate_ear(
+                    left_eye
                 )
 
-                if success:
+                right_ear = calculate_ear(
+                    right_eye
+                )
 
+                ear = (
+                    left_ear +
+                    right_ear
+                ) / 2
+
+                blink_detected = (
+                    blink_counters[
+                        student_id
+                    ].update(
+                        ear
+                    )
+                )
+
+                if (
+                    blink_detected
+                    and
+                    not liveness_verifiers[
+                        student_id
+                    ].blinked
+                ):
+
+                    liveness_verifiers[
+                        student_id
+                    ].update_blink()
                     print(
-                        f"[ATTENDANCE] "
-                        f"{student_code} - "
-                        f"{full_name}"
+                        "BLINK STATE =",
+                        liveness_verifiers[
+                            student_id
+                        ].blinked
+                    )
+                    print(
+                        f"{student_code} BLINK OK"
                     )
 
-                attendance_cache[
-                    student_id
-                ] = current_timestamp
+                # ==========================
+                # HEAD POSE
+                # ==========================
+
+                direction = get_head_direction(
+                    face
+                )
+
+                if (
+                    direction == "LEFT"
+                    and not liveness_verifiers[
+                        student_id
+                    ].looked_left
+                ):
+
+                    print(
+                        "LEFT DETECTED"
+                    )
+
+                    liveness_verifiers[
+                        student_id
+                    ].update_head_pose(
+                        "LEFT"
+                    )
+
+                elif (
+                    direction == "RIGHT"
+                    and not liveness_verifiers[
+                        student_id
+                    ].looked_right
+                ):
+
+                    print(
+                        "RIGHT DETECTED"
+                    )
+
+                    liveness_verifiers[
+                        student_id
+                    ].update_head_pose(
+                        "RIGHT"
+                    )
+                # ==========================
+                # VERIFIED
+                # ==========================
+
+                verified = (
+                    liveness_verifiers[
+                        student_id
+                    ].is_verified()
+                )
+                
+                if (
+                    verified
+                    and not verified_cache.get(
+                        student_id,
+                        False
+                    )
+                ):
+
+                    print(
+                        f"[VERIFIED] "
+                        f"{student_code}"
+                    )
+
+                    verified_cache[
+                        student_id
+                    ] = True
+
+            if verified_cache.get(student_id, False):
+
+                current_timestamp = time.time()
+
+                last_seen = attendance_cache.get(
+                    student_id,
+                    0
+                )
+
+                if current_timestamp - last_seen > 10:
+
+                    success = mark_attendance(
+                        session_id=current_session_id,
+                        student_id=student_id
+                    )
+
+                    if success:
+
+                        print(
+                            f"[ATTENDANCE] "
+                            f"{student_code} - "
+                            f"{full_name}"
+                        )
+
+                    attendance_cache[
+                        student_id
+                    ] = current_timestamp
             # ==========================
             # Màu sắc theo độ tin cậy
             # ==========================
@@ -273,13 +444,88 @@ while True:
             cv2.putText(
                 frame,
                 f"{similarity:.2f}",
-                (x2, y2 - 220),
+                (x1, y1 - 70),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
                 color,
                 2
             )
 
+            cv2.putText(
+                frame,
+                f"EAR: {ear:.2f}",
+                (x1, y2 + 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255,255,0),
+                # color,
+                2
+            )
+
+            cv2.putText(
+                frame,
+                f"Blinks: {blink_counters[student_id].total_blinks}",
+                (x1, y2 + 80),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255,255,0),
+                # color,
+                2
+            )
+
+            # status_text = (
+            #     "VERIFIED"
+            #     if verified
+            #     else
+            #     "PLEASE BLINK"
+            # )
+            verifier = liveness_verifiers[
+                student_id
+            ]
+
+            if verified:
+
+                status_text = "VERIFIED"
+
+            elif not verifier.blinked:
+
+                status_text = "PLEASE BLINK"
+
+            elif not verifier.looked_left:
+
+                status_text = "TURN LEFT"
+
+            elif not verifier.looked_right:
+
+                status_text = "TURN RIGHT"
+
+            else:
+
+                status_text = "VERIFYING..."
+            status_color = (
+                (0,255,0)
+                if verified
+                else
+                (0,0,255)
+            )
+            cv2.putText(
+                frame,
+                f"Pose: {direction}",
+                (x1, y2 + 105),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255,255,0),
+                2
+            )
+            cv2.putText(
+                frame,
+                status_text,
+                (x1, y2 + 130),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                status_color,
+                2
+            )
         # ==================================
         # Nếu không nhận diện được
         # ==================================

@@ -1,11 +1,7 @@
 import sqlite3
 
-from datetime import date
-
 
 def get_current_session():
-
-    today = date.today().isoformat()
 
     conn = sqlite3.connect(
         "attendance.db"
@@ -17,13 +13,9 @@ def get_current_session():
         """
         SELECT id
         FROM attendance_sessions
-        WHERE session_date = ?
-        ORDER BY id DESC
+        WHERE is_active = 1
         LIMIT 1
-        """,
-        (
-            today,
-        )
+        """
     )
 
     session = cursor.fetchone()
