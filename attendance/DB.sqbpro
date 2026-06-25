@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="D:/FACE_ATTENDANCE/attendance.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="100"/><column_width id="3" width="2016"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><table title="schedules" custom_title="0" dock_id="1" table="4,9:mainschedules"/><dock_state state="000000ff00000000fd00000001000000020000037d0000039efc0100000001fb000000160064006f0063006b00420072006f007700730065003101000000000000037d0000011800ffffff000002580000000000000004000000040000000800000008fc00000000"/><default_encoding codec=""/><browse_table_settings><table schema="main" name="attendance_records" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="29"/><column index="2" value="68"/><column index="3" value="70"/><column index="4" value="96"/><column index="5" value="62"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="attendance_sessions" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="29"/><column index="2" value="68"/><column index="3" value="85"/><column index="4" value="70"/><column index="5" value="70"/><column index="6" value="58"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="course_sections" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="29"/><column index="2" value="64"/><column index="3" value="86"/><column index="4" value="39"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table><table schema="main" name="schedules" show_row_id="0" encoding="" plot_x_axis="" unlock_view_pk="_rowid_" freeze_columns="0"><sort/><column_widths><column index="1" value="29"/><column index="2" value="68"/><column index="3" value="58"/><column index="4" value="67"/><column index="5" value="61"/></column_widths><filter_values/><conditional_formats/><row_id_formats/><display_formats/><hidden_columns/><plot_y_axes/><global_filter/></table></browse_table_settings></tab_browse><tab_sql><sql name="SQL 1*">SELECT * FROM courses;
+SELECT * FROM course_sections;
+SELECT * FROM enrollments;
+SELECT
+    s.student_code,
+    s.full_name,
+    c.course_name,
+    cs.section_name
+FROM enrollments e
+JOIN students s
+    ON e.student_id = s.id
+JOIN course_sections cs
+    ON e.section_id = cs.id
+JOIN courses c
+    ON cs.course_id = c.id;
+	
+SELECT name
+FROM sqlite_master
+WHERE type='table';
+
+CREATE TABLE schedules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    section_id INTEGER NOT NULL,
+
+    weekday INTEGER NOT NULL,
+
+    start_time TEXT NOT NULL,
+
+    end_time TEXT NOT NULL,
+
+    FOREIGN KEY(section_id)
+        REFERENCES course_sections(id)
+);
+
+INSERT INTO schedules
+(
+    section_id,
+    weekday,
+    start_time,
+    end_time
+)
+VALUES
+(
+    1,
+    0,
+    '06:45',
+    '09:25'
+);
+
+
+INSERT INTO schedules
+(
+    section_id,
+    weekday,
+    start_time,
+    end_time
+)
+VALUES
+(
+    2,
+    0,
+    '13:00',
+    '15:45'
+);
+
+SELECT * FROM schedules;
+
+UPDATE schedules
+SET start_time='14:00',
+    end_time='15:00'
+WHERE id=1;
+
+SELECT *
+FROM attendance_sessions
+ORDER BY id DESC;
+
+SELECT
+    id,
+    section_id,
+    session_date,
+    is_active
+FROM attendance_sessions
+ORDER BY id DESC;</sql><current_tab id="0"/></tab_sql></sqlb_project>

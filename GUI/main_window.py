@@ -3,6 +3,17 @@ from tkinter import messagebox
 import subprocess
 import sys
 
+
+def open_add_student():
+
+    subprocess.Popen(
+        [
+            sys.executable,
+            "gui/add_student.py"
+        ]
+    )
+
+
 def start_recognition():
 
     subprocess.Popen(
@@ -75,6 +86,17 @@ title.pack(
     pady=20
 )
 
+btn_add_student = tk.Button(
+    root,
+    text="Add Student",
+    width=25,
+    height=2,
+    command=open_add_student
+)
+
+btn_add_student.pack(
+    pady=10
+)
 
 btn1 = tk.Button(
     root,

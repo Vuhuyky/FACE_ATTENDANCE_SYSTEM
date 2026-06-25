@@ -11,8 +11,20 @@ from face_recognition.draw_utils import (
     draw_unknown_face
 )
 
+from face_recognition.attendance_handler import (
+    process_attendance
+)
+
 from attendance.attendance import (
     mark_attendance
+)
+
+from database.get_session_section import (
+    get_session_section
+)
+
+from database.auto_session_manager import (
+    auto_session_manager
 )
 
 from attendance.get_current_session import (
@@ -37,6 +49,11 @@ from anti_spoofing.blink_detector import (
 from anti_spoofing.head_pose import (
     get_head_direction
 )
+auto_session_manager()
+
+current_session_id = (
+    get_current_session()
+)
 # ==========================================
 # 1. Khởi tạo InsightFace
 # ==========================================
@@ -52,6 +69,23 @@ app.prepare(
 # 2. Load toàn bộ sinh viên đã đăng ký mặt
 # từ database
 # ==========================================
+current_session_id = (
+    get_current_session()
+)
+
+section_id = get_session_section(
+    current_session_id
+)
+
+print(
+    "Current Session:",
+    current_session_id
+)
+
+print(
+    "Section:",
+    section_id
+)
 
 conn = sqlite3.connect(
     "attendance.db"
@@ -59,15 +93,23 @@ conn = sqlite3.connect(
 
 cursor = conn.cursor()
 
-cursor.execute("""
-SELECT
-    id,
-    student_code,
-    full_name,
-    face_embedding
-FROM students
-WHERE face_embedding IS NOT NULL
-""")
+cursor.execute(
+    """
+    SELECT
+        s.id,
+        s.student_code,
+        s.full_name,
+        s.face_embedding
+    FROM students s
+
+    JOIN enrollments e
+        ON s.id = e.student_id
+
+    WHERE e.section_id = ?
+    AND s.face_embedding IS NOT NULL
+    """,
+    (section_id,)
+)
 
 rows = cursor.fetchall()
 
@@ -124,6 +166,11 @@ liveness_verifiers = {}
 
 current_session_id = (
     get_current_session()
+)
+section_id = (
+    get_session_section(
+        current_session_id
+    )
 )
 
 print(
@@ -354,34 +401,18 @@ while True:
                     verified_cache[
                         student_id
                     ] = True
+            if verified_cache.get(
+                student_id,
+                False
+            ):
 
-            if verified_cache.get(student_id, False):
-
-                current_timestamp = time.time()
-
-                last_seen = attendance_cache.get(
-                    student_id,
-                    0
+                process_attendance(
+                    student_id=student_id,
+                    student_code=student_code,
+                    full_name=full_name,
+                    session_id=current_session_id,
+                    attendance_cache=attendance_cache
                 )
-
-                if current_timestamp - last_seen > 10:
-
-                    success = mark_attendance(
-                        session_id=current_session_id,
-                        student_id=student_id
-                    )
-
-                    if success:
-
-                        print(
-                            f"[ATTENDANCE] "
-                            f"{student_code} - "
-                            f"{full_name}"
-                        )
-
-                    attendance_cache[
-                        student_id
-                    ] = current_timestamp
             # ==========================
             # Màu sắc theo độ tin cậy
             # ==========================
@@ -402,129 +433,25 @@ while True:
     # Vẽ khung mặt
     # ==========================
 
-            cv2.rectangle(
-                frame,
-                (x1, y1),
-                (x2, y2),
-                color,
-                2
-            )
-
-    # ==========================
-    # Mã sinh viên
-    # ==========================
-
-            cv2.putText(
-                frame,
-                student_code,
-                (x1, y1 - 45),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                color,
-                2
-            )
-
-    # ==========================
-    # Họ tên
-    # ==========================
-
-            cv2.putText(
-                frame,
-                full_name,
-                (x1, y1 - 20),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                color,
-                2
-            )
-
-    # ==========================
-    # Điểm similarity
-    # ==========================
-            cv2.putText(
-                frame,
-                f"{similarity:.2f}",
-                (x1, y1 - 70),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                color,
-                2
-            )
-
-            cv2.putText(
-                frame,
-                f"EAR: {ear:.2f}",
-                (x1, y2 + 30),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                (255,255,0),
-                # color,
-                2
-            )
-
-            cv2.putText(
-                frame,
-                f"Blinks: {blink_counters[student_id].total_blinks}",
-                (x1, y2 + 80),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                (255,255,0),
-                # color,
-                2
-            )
-
-            # status_text = (
-            #     "VERIFIED"
-            #     if verified
-            #     else
-            #     "PLEASE BLINK"
-            # )
-            verifier = liveness_verifiers[
-                student_id
-            ]
-
-            if verified:
-
-                status_text = "VERIFIED"
-
-            elif not verifier.blinked:
-
-                status_text = "PLEASE BLINK"
-
-            elif not verifier.looked_left:
-
-                status_text = "TURN LEFT"
-
-            elif not verifier.looked_right:
-
-                status_text = "TURN RIGHT"
-
-            else:
-
-                status_text = "VERIFYING..."
-            status_color = (
-                (0,255,0)
-                if verified
-                else
-                (0,0,255)
-            )
-            cv2.putText(
-                frame,
-                f"Pose: {direction}",
-                (x1, y2 + 105),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                (255,255,0),
-                2
-            )
-            cv2.putText(
-                frame,
-                status_text,
-                (x1, y2 + 130),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                status_color,
-                2
+            draw_recognized_face(
+                frame=frame,
+                x1=x1,
+                y1=y1,
+                x2=x2,
+                y2=y2,
+                color=color,
+                student_code=student_code,
+                full_name=full_name,
+                similarity=similarity,
+                ear=ear,
+                blink_count=blink_counters[
+                    student_id
+                ].total_blinks,
+                direction=direction,
+                verified=verified,
+                verifier=liveness_verifiers[
+                    student_id
+                ]
             )
         # ==================================
         # Nếu không nhận diện được
@@ -532,22 +459,12 @@ while True:
 
         else:
 
-            cv2.rectangle(
+            draw_unknown_face(
                 frame,
-                (x1, y1),
-                (x2, y2),
-                (0, 0, 255),
-                2
-            )
-
-            cv2.putText(
-                frame,
-                "Unknown",
-                (x1, y1 - 10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                (0, 0, 255),
-                2
+                x1,
+                y1,
+                x2,
+                y2
             )
 
     # ======================================

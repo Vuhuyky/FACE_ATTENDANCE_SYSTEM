@@ -1,10 +1,47 @@
 import sqlite3
 
+def get_latest_session():
+
+    conn = sqlite3.connect(
+        "attendance.db"
+    )
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT id
+        FROM attendance_sessions
+        ORDER BY id DESC
+        LIMIT 1
+        """
+    )
+
+    result = cursor.fetchone()
+
+    conn.close()
+
+    if result:
+
+        return result[0]
+
+    return None
 
 def attendance_report(
-    session_id
+    session_id=None
 ):
+    if session_id is None:
 
+        session_id = get_latest_session()
+
+        if session_id is None:
+
+            print(
+                "No session found"
+            )
+
+            return
+        
     conn = sqlite3.connect(
         "attendance.db"
     )
@@ -17,7 +54,9 @@ def attendance_report(
 
     cursor.execute(
         """
-        SELECT section_id
+        SELECT
+            section_id,
+            session_date
         FROM attendance_sessions
         WHERE id = ?
         """,
@@ -37,6 +76,43 @@ def attendance_report(
         return
 
     section_id = result[0]
+
+    session_date = result[1]
+
+    # =====================================
+    # Lấy thông tin môn học
+    # =====================================
+
+    cursor.execute(
+        """
+        SELECT
+            c.course_name,
+            cs.section_name
+        FROM course_sections cs
+
+        JOIN courses c
+        ON cs.course_id = c.id
+
+        WHERE cs.id = ?
+        """,
+        (section_id,)
+    )
+
+    course_info = cursor.fetchone()
+
+    if not course_info:
+
+        print(
+            "Course information not found"
+        )
+
+        conn.close()
+
+        return
+
+    course_name = course_info[0]
+
+    section_name = course_info[1]
 
     # =====================================
     # Danh sách sinh viên thuộc lớp
@@ -98,7 +174,20 @@ def attendance_report(
         )
 
     # =====================================
-    # Present
+    # Attendance Rate
+    # =====================================
+
+    attendance_rate = 0
+
+    if len(all_students) > 0:
+
+        attendance_rate = (
+            len(present_students)
+            / len(all_students)
+        ) * 100
+
+    # =====================================
+    # Header
     # =====================================
 
     print()
@@ -106,12 +195,28 @@ def attendance_report(
     print("=" * 60)
 
     print(
-        f"SESSION {session_id}"
+        f"COURSE : {course_name}"
+    )
+
+    print(
+        f"SECTION: {section_name}"
+    )
+
+    print(
+        f"SESSION: {session_id}"
+    )
+
+    print(
+        f"DATE   : {session_date}"
     )
 
     print("=" * 60)
 
     print()
+
+    # =====================================
+    # Present
+    # =====================================
 
     print("PRESENT")
 
@@ -120,7 +225,9 @@ def attendance_report(
     for row in present_students:
 
         student_code = row[1]
+
         full_name = row[2]
+
         first_seen = row[3]
 
         print(
@@ -163,20 +270,27 @@ def attendance_report(
     print("=" * 60)
 
     print(
-        f"Present: {len(present_students)}"
+        f"Present : {len(present_students)}"
     )
 
     print(
-        f"Absent : {absent_count}"
+        f"Absent  : {absent_count}"
     )
 
     print(
         f"Total   : {len(all_students)}"
     )
 
+    print()
+
+    print(
+        f"Attendance Rate : "
+        f"{attendance_rate:.2f}%"
+    )
+
     print("=" * 60)
 
+
 if __name__ == "__main__":
-    attendance_report(
-        session_id=1
-    )
+
+    attendance_report()
