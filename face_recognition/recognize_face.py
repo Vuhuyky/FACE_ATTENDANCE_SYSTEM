@@ -3,6 +3,7 @@ import sqlite3
 from datetime import datetime
 from insightface.app import FaceAnalysis
 import time
+from database.connection import get_connection
 
 from face_recognition.draw_face_info import draw_face_info
 
@@ -87,9 +88,7 @@ print(
     section_id
 )
 
-conn = sqlite3.connect(
-    "attendance.db"
-)
+conn = get_connection()
 
 cursor = conn.cursor()
 

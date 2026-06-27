@@ -1,12 +1,11 @@
 import sqlite3
 
 from datetime import date
+from database.connection import get_connection
 
 today = date.today().isoformat()
 
-conn = sqlite3.connect(
-    "attendance.db"
-)
+conn = get_connection()
 
 cursor = conn.cursor()
 

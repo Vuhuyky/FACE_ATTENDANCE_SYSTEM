@@ -1,6 +1,6 @@
 import sqlite3
-
-conn = sqlite3.connect("attendance.db")
+from database.connection import get_connection
+conn = get_connection()
 
 cursor = conn.cursor()
 

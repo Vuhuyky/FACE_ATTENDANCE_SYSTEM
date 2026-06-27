@@ -3,12 +3,11 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 
+from database.connection import get_connection
 
 def load_sections():
 
-    conn = sqlite3.connect(
-        "attendance.db"
-    )
+    conn = get_connection()
 
     cursor = conn.cursor()
 
@@ -57,9 +56,7 @@ def add_student():
         section_text.split(" - ")[0]
     )
 
-    conn = sqlite3.connect(
-        "attendance.db"
-    )
+    conn = get_connection()
 
     cursor = conn.cursor()
 

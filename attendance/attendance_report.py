@@ -1,10 +1,10 @@
 import sqlite3
 
+from database.connection import get_connection
+
 def get_latest_session():
 
-    conn = sqlite3.connect(
-        "attendance.db"
-    )
+    conn = get_connection()
 
     cursor = conn.cursor()
 
@@ -42,9 +42,7 @@ def attendance_report(
 
             return
         
-    conn = sqlite3.connect(
-        "attendance.db"
-    )
+    conn = get_connection()
 
     cursor = conn.cursor()
 

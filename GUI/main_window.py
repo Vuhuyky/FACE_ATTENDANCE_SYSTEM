@@ -13,6 +13,14 @@ def open_add_student():
         ]
     )
 
+def open_register_face():
+
+    subprocess.Popen(
+        [
+            sys.executable,
+            "face_recognition/register_face.py"
+        ]
+    )
 
 def start_recognition():
 
@@ -24,6 +32,14 @@ def start_recognition():
         ]
     )
 
+def open_student_management():
+
+    subprocess.Popen(
+        [
+            sys.executable,
+            "GUI/student_management.py"
+        ]
+    )
 
 def create_session():
 
@@ -95,6 +111,30 @@ btn_add_student = tk.Button(
 )
 
 btn_add_student.pack(
+    pady=10
+)
+
+btn_student = tk.Button(
+    root,
+    text="Student Management",
+    width=25,
+    height=2,
+    command=open_student_management
+)
+
+btn_student.pack(
+    pady=10
+)
+
+btn_register_face = tk.Button(
+    root,
+    text="Register Face",
+    width=25,
+    height=2,
+    command=open_register_face
+)
+
+btn_register_face.pack(
     pady=10
 )
 

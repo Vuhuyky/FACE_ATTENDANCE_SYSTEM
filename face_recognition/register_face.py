@@ -1,11 +1,15 @@
 import cv2
 import sqlite3
 import numpy as np
+import tkinter as tk
+from tkinter import ttk
+from tkinter import messagebox
 
 from insightface.app import FaceAnalysis
 
 from utils import embedding_to_json
 
+from database.connection import get_connection
 
 # =====================
 # Load Face Model
@@ -18,169 +22,242 @@ app.prepare(
     det_size=(640, 640)
 )
 
-# =====================
-# Input MSSV
-# =====================
-
-student_code = input(
-    "Enter Student Code: "
-)
 
 # =====================
-# Check Student Exists
+# Load Students
 # =====================
 
-conn = sqlite3.connect(
-    "attendance.db"
-)
+def load_students():
 
-cursor = conn.cursor()
+    conn = get_connection()
 
-cursor.execute(
-    """
-    SELECT
-        id,
-        full_name,
-        face_embedding
-    FROM students
-    WHERE student_code = ?
-    """,
-    (student_code,)
-)
+    cursor = conn.cursor()
 
-student = cursor.fetchone()
+    cursor.execute(
+        """
+        SELECT
+            student_code,
+            full_name
+        FROM students
+        ORDER BY student_code
+        """
+    )
 
-if student is None:
-
-    print("Student not found!")
+    rows = cursor.fetchall()
 
     conn.close()
 
-    exit()
+    return rows
 
-if student[2] is not None:
 
-    print()
-    answer = input(
-        "Face already registered. Overwrite? (y/n): "
+# =====================
+# Register Face
+# =====================
+
+def register_face():
+
+    student_text = combo_student.get()
+
+    if not student_text:
+
+        messagebox.showerror(
+            "Error",
+            "Please select student"
+        )
+
+        return
+
+    student_code = student_text.split(" - ")[0]
+
+    conn = get_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            id,
+            full_name,
+            face_embedding
+        FROM students
+        WHERE student_code = ?
+        """,
+        (
+            student_code,
+        )
     )
 
-    if answer.lower() != "y":
+    student = cursor.fetchone()
 
-        print("Registration cancelled.")
+    if student is None:
+
+        messagebox.showerror(
+            "Error",
+            "Student not found"
+        )
 
         conn.close()
 
-        exit()
+        return
 
-print()
-print(f"Student Code: {student_code}")
-print(f"Student Name: {student[1]}")
-print()
+    if student[2] is not None:
 
-# =====================
-# Open Camera
-# =====================
-
-cap = cv2.VideoCapture(0)
-
-embeddings = []
-
-print()
-print("Press SPACE 5 times")
-print("Look different directions")
-print()
-
-while True:
-
-    ret, frame = cap.read()
-
-    if not ret:
-        break
-
-    cv2.imshow(
-        "Register Face",
-        frame
-    )
-
-    key = cv2.waitKey(1)
-
-    if key == 32:  # SPACE
-
-        faces = app.get(frame)
-
-        if len(faces) == 0:
-
-            print("No face detected")
-
-            continue
-
-        embedding = faces[0].embedding
-
-        embeddings.append(
-            embedding
+        answer = messagebox.askyesno(
+            "Warning",
+            "Face already registered.\nOverwrite?"
         )
 
-        print(
-            f"Captured {len(embeddings)}/5"
-        )
+        if not answer:
 
-        if len(embeddings) == 5:
+            conn.close()
+
+            return
+
+    embeddings = []
+
+    cap = cv2.VideoCapture(0)
+
+    print()
+    print("Press SPACE 5 times")
+    print("Look different directions")
+    print()
+
+    while True:
+
+        ret, frame = cap.read()
+
+        if not ret:
             break
 
-# =====================
-# Release Camera
-# =====================
+        cv2.imshow(
+            "Register Face",
+            frame
+        )
 
-cap.release()
+        key = cv2.waitKey(1)
 
-cv2.destroyAllWindows()
+        if key == 32:
 
-# =====================
-# Average Embedding
-# =====================
-if len(embeddings) != 5:
+            faces = app.get(frame)
 
-    print(
-        "Registration failed!"
+            if len(faces) == 0:
+
+                print(
+                    "No face detected"
+                )
+
+                continue
+
+            embedding = faces[0].embedding
+
+            embeddings.append(
+                embedding
+            )
+
+            print(
+                f"Captured {len(embeddings)}/5"
+            )
+
+            if len(embeddings) == 5:
+                break
+
+    cap.release()
+
+    cv2.destroyAllWindows()
+
+    if len(embeddings) != 5:
+
+        messagebox.showerror(
+            "Error",
+            f"Captured only {len(embeddings)}/5 images"
+        )
+
+        conn.close()
+
+        return
+
+    avg_embedding = np.mean(
+        embeddings,
+        axis=0
     )
 
-    print(
-        f"Captured only {len(embeddings)}/5"
+    embedding_json = embedding_to_json(
+        avg_embedding
     )
+
+    cursor.execute(
+        """
+        UPDATE students
+        SET face_embedding = ?
+        WHERE student_code = ?
+        """,
+        (
+            embedding_json,
+            student_code
+        )
+    )
+
+    conn.commit()
 
     conn.close()
 
-    exit()
-
-avg_embedding = np.mean(
-    embeddings,
-    axis=0
-)
-
-# =====================
-# Save Database
-# =====================
-
-embedding_json = embedding_to_json(
-    avg_embedding
-)
-
-cursor.execute(
-    """
-    UPDATE students
-    SET face_embedding = ?
-    WHERE student_code = ?
-    """,
-    (
-        embedding_json,
-        student_code
+    messagebox.showinfo(
+        "Success",
+        "Face registered successfully"
     )
+
+
+# =====================
+# GUI
+# =====================
+
+root = tk.Tk()
+
+root.title(
+    "Register Face"
 )
 
-conn.commit()
+root.geometry(
+    "500x250"
+)
 
-conn.close()
+tk.Label(
+    root,
+    text="Select Student",
+    font=("Arial", 12)
+).pack(
+    pady=10
+)
 
-print()
-print("Face registered successfully!")
+combo_student = ttk.Combobox(
+    root,
+    width=45,
+    state="readonly"
+)
+
+students = load_students()
+
+combo_student["values"] = [
+
+    f"{row[0]} - {row[1]}"
+
+    for row in students
+]
+
+combo_student.pack(
+    pady=10
+)
+
+btn_register = tk.Button(
+    root,
+    text="Register Face",
+    width=20,
+    height=2,
+    command=register_face
+)
+
+btn_register.pack(
+    pady=20
+)
+
+root.mainloop()

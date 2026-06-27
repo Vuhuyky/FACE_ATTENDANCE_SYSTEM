@@ -41,3 +41,33 @@ SELECT
 FROM enrollments e
 JOIN students s
     ON e.student_id = s.id;
+
+
+
+
+PRAGMA table_info(attendance_sessions);
+
+UPDATE schedules
+SET weekday = 3,
+    start_time = '22:41',
+    end_time = '22:43'
+WHERE section_id = 2;
+
+SELECT * FROM schedules;
+
+DELETE FROM course_sections
+WHERE id IN (3,4);
+
+SELECT * FROM course_sections;
+
+UPDATE course_sections
+SET section_name = 'CV101-01'
+WHERE id = 1;
+
+UPDATE course_sections
+SET section_name = 'AI101-01'
+WHERE id = 2;
+
+UPDATE students
+SET email = 'kyhuyvu@gmail.com'
+WHERE id = 4;

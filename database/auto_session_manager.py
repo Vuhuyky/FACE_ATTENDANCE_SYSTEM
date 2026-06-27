@@ -1,7 +1,7 @@
 import sqlite3
 
 from datetime import datetime
-
+from database.connection import get_connection
 
 def auto_session_manager():
 
@@ -21,9 +21,7 @@ def auto_session_manager():
         f"[AUTO] current_time={current_time}"
     )
 
-    conn = sqlite3.connect(
-        "attendance.db"
-    )
+    conn = get_connection()
     import os
 
     print(

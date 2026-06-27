@@ -1,13 +1,11 @@
 import sqlite3
 
 from openpyxl import Workbook
-
+from database.connection import get_connection
 
 def get_latest_session():
 
-    conn = sqlite3.connect(
-        "attendance.db"
-    )
+    conn = get_connection()
 
     cursor = conn.cursor()
 
@@ -48,9 +46,7 @@ def export_session_to_excel(
 
             return
 
-    conn = sqlite3.connect(
-        "attendance.db"
-    )
+    conn = get_connection()
 
     cursor = conn.cursor()
 

@@ -2,6 +2,7 @@ import sqlite3
 
 from datetime import datetime
 
+from database.connection import get_connection
 
 def mark_attendance(
     session_id,
@@ -11,9 +12,7 @@ def mark_attendance(
     Điểm danh sinh viên
     """
 
-    conn = sqlite3.connect(
-        "attendance.db"
-    )
+    conn = get_connection()
 
     cursor = conn.cursor()
 
