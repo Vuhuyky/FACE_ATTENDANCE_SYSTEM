@@ -280,7 +280,7 @@ tk.Button(
     height=button_height,
 
     command=lambda: open_module(
-        "attendance.attendance_report"
+        "GUI.attendance_report_gui"
     )
 
 ).grid(

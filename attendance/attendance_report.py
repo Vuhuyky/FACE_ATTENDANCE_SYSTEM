@@ -27,21 +27,65 @@ def get_latest_session():
 
     return None
 
-def attendance_report(
-    session_id=None
-):
+
+def get_all_sessions():
+    """
+    Returns every session, newest first, as
+    (session_id, course_name, section_name, session_date)
+    tuples - used to populate the session picker in the
+    Attendance Report GUI.
+    """
+
+    conn = get_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            s.id,
+            c.course_name,
+            cs.section_name,
+            s.session_date
+        FROM attendance_sessions s
+
+        JOIN course_sections cs
+        ON s.section_id = cs.id
+
+        JOIN courses c
+        ON cs.course_id = c.id
+
+        ORDER BY s.id DESC
+        """
+    )
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return rows
+
+
+def get_attendance_report_data(session_id=None):
+    """
+    Gathers everything needed for an attendance report into
+    a single dict, without printing anything. Both the CLI
+    report below and the GUI report / Excel export build on
+    top of this, so the underlying queries only live in one
+    place.
+
+    Returns None if the session (or its course/section) can't
+    be found.
+    """
+
     if session_id is None:
 
         session_id = get_latest_session()
 
         if session_id is None:
 
-            print(
-                "No session found"
-            )
+            return None
 
-            return
-        
     conn = get_connection()
 
     cursor = conn.cursor()
@@ -65,13 +109,9 @@ def attendance_report(
 
     if not result:
 
-        print(
-            "Session not found"
-        )
-
         conn.close()
 
-        return
+        return None
 
     section_id = result[0]
 
@@ -100,13 +140,9 @@ def attendance_report(
 
     if not course_info:
 
-        print(
-            "Course information not found"
-        )
-
         conn.close()
 
-        return
+        return None
 
     course_name = course_info[0]
 
@@ -128,6 +164,8 @@ def attendance_report(
         ON s.id = e.student_id
 
         WHERE e.section_id = ?
+
+        ORDER BY s.student_code
         """,
         (section_id,)
     )
@@ -151,6 +189,8 @@ def attendance_report(
         ON ar.student_id = s.id
 
         WHERE ar.session_id = ?
+
+        ORDER BY s.student_code
         """,
         (session_id,)
     )
@@ -163,26 +203,62 @@ def attendance_report(
     # Tạo set id đã điểm danh
     # =====================================
 
-    present_ids = set()
+    present_ids = {
+        row[0]
+        for row in present_students
+    }
 
-    for row in present_students:
+    absent_students = [
+        student
+        for student in all_students
+        if student[0] not in present_ids
+    ]
 
-        present_ids.add(
-            row[0]
+    total = len(all_students)
+
+    present_count = len(present_students)
+
+    absent_count = len(absent_students)
+
+    attendance_rate = (
+        (present_count / total) * 100
+        if total > 0 else 0
+    )
+
+    return {
+        "session_id": session_id,
+        "course_name": course_name,
+        "section_name": section_name,
+        "session_date": session_date,
+        "present_students": present_students,   # (id, code, name, first_seen_time)
+        "absent_students": absent_students,      # (id, code, name)
+        "present_count": present_count,
+        "absent_count": absent_count,
+        "total": total,
+        "attendance_rate": attendance_rate
+    }
+
+
+def attendance_report(
+    session_id=None
+):
+    """
+    CLI report - unchanged behaviour, now built on top of
+    get_attendance_report_data() instead of duplicating the
+    queries itself.
+    """
+
+    report = get_attendance_report_data(session_id)
+
+    if report is None:
+
+        print(
+            "No session found"
+            if session_id is None
+            else "Session not found"
         )
 
-    # =====================================
-    # Attendance Rate
-    # =====================================
-
-    attendance_rate = 0
-
-    if len(all_students) > 0:
-
-        attendance_rate = (
-            len(present_students)
-            / len(all_students)
-        ) * 100
+        return
 
     # =====================================
     # Header
@@ -193,19 +269,19 @@ def attendance_report(
     print("=" * 60)
 
     print(
-        f"COURSE : {course_name}"
+        f"COURSE : {report['course_name']}"
     )
 
     print(
-        f"SECTION: {section_name}"
+        f"SECTION: {report['section_name']}"
     )
 
     print(
-        f"SESSION: {session_id}"
+        f"SESSION: {report['session_id']}"
     )
 
     print(
-        f"DATE   : {session_date}"
+        f"DATE   : {report['session_date']}"
     )
 
     print("=" * 60)
@@ -220,7 +296,7 @@ def attendance_report(
 
     print("-" * 60)
 
-    for row in present_students:
+    for row in report["present_students"]:
 
         student_code = row[1]
 
@@ -244,20 +320,12 @@ def attendance_report(
 
     print("-" * 60)
 
-    absent_count = 0
+    for student in report["absent_students"]:
 
-    for student in all_students:
-
-        student_id = student[0]
-
-        if student_id not in present_ids:
-
-            absent_count += 1
-
-            print(
-                f"✗ {student[1]} | "
-                f"{student[2]}"
-            )
+        print(
+            f"✗ {student[1]} | "
+            f"{student[2]}"
+        )
 
     # =====================================
     # Summary
@@ -268,22 +336,22 @@ def attendance_report(
     print("=" * 60)
 
     print(
-        f"Present : {len(present_students)}"
+        f"Present : {report['present_count']}"
     )
 
     print(
-        f"Absent  : {absent_count}"
+        f"Absent  : {report['absent_count']}"
     )
 
     print(
-        f"Total   : {len(all_students)}"
+        f"Total   : {report['total']}"
     )
 
     print()
 
     print(
         f"Attendance Rate : "
-        f"{attendance_rate:.2f}%"
+        f"{report['attendance_rate']:.2f}%"
     )
 
     print("=" * 60)
