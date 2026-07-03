@@ -3,7 +3,7 @@ import sqlite3
 from datetime import datetime
 from insightface.app import FaceAnalysis
 import time
-from database.connection import get_connection
+from database.connection import get_connection, PHOTOS_DIR
 
 from face_recognition.draw_face_info import draw_face_info
 
@@ -50,112 +50,20 @@ from anti_spoofing.blink_detector import (
 from anti_spoofing.head_pose import (
     get_head_direction
 )
-auto_session_manager()
-
-current_session_id = (
-    get_current_session()
-)
-# ==========================================
-# 1. Khởi tạo InsightFace
-# ==========================================
-
-app = FaceAnalysis()
-
-app.prepare(
-    ctx_id=0,
-    det_size=(640, 640)
-)
 
 # ==========================================
-# 2. Load toàn bộ sinh viên đã đăng ký mặt
-# từ database
+# Global variables
 # ==========================================
-current_session_id = (
-    get_current_session()
-)
 
-section_id = get_session_section(
-    current_session_id
-)
-
-print(
-    "Current Session:",
-    current_session_id
-)
-
-print(
-    "Section:",
-    section_id
-)
-
-conn = get_connection()
-
-cursor = conn.cursor()
-
-cursor.execute(
-    """
-    SELECT
-        s.id,
-        s.student_code,
-        s.full_name,
-        s.face_embedding
-    FROM students s
-
-    JOIN enrollments e
-        ON s.id = e.student_id
-
-    WHERE e.section_id = ?
-    AND s.face_embedding IS NOT NULL
-    """,
-    (section_id,)
-)
-
-rows = cursor.fetchall()
+app = None
 
 students = []
 
-for row in rows:
+current_session_id = None
 
-    student_id = row[0]
-    student_code = row[1]
-    full_name = row[2]
-    embedding_json = row[3]
+section_id = None
 
-    students.append(
-        (
-            row[0],  # student_id
-            row[1],  # student_code
-            row[2],  # full_name
-            json_to_embedding(
-                row[3]
-            )  # face_embedding
-        )
-    )
-
-conn.close()
-
-print(
-    f"Loaded {len(students)} students"
-)
-
-# ==========================================
-# 3. Mở camera
-# ==========================================
-
-cap = cv2.VideoCapture(
-    0,
-    cv2.CAP_DSHOW
-)
-
-if not cap.isOpened():
-
-    print(
-        "Cannot open camera"
-    )
-
-    exit()
-
-attendance_cache = {} 
+attendance_cache = {}
 
 verified_cache = {}
 
@@ -163,38 +71,147 @@ blink_counters = {}
 
 liveness_verifiers = {}
 
-current_session_id = (
-    get_current_session()
-)
-section_id = (
-    get_session_section(
+
+# ==========================================
+# Initialize
+# ==========================================
+
+def initialize():
+
+    global app
+    global students
+    global current_session_id
+    global section_id
+    global attendance_cache
+    global verified_cache
+    global blink_counters
+    global liveness_verifiers
+
+    attendance_cache = {}
+    verified_cache = {}
+    blink_counters = {}
+    liveness_verifiers = {}
+
+    auto_session_manager()
+
+    current_session_id = get_current_session()
+
+    if current_session_id is None:
+
+        print("No active session found")
+
+        return False
+
+    section_id = get_session_section(
         current_session_id
     )
-)
 
-print(
-    "Current Session:",
-    current_session_id
-)
+    print("Current Session:", current_session_id)
+    print("Section:", section_id)
 
-if current_session_id is None:
+    app = FaceAnalysis()
 
-    print(
-        "No active session found"
+    app.prepare(
+        ctx_id=0,
+        det_size=(640, 640)
     )
 
-    exit()
+    conn = get_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            s.id,
+            s.student_code,
+            s.full_name,
+
+            c.course_name,
+
+            cs.section_name,
+
+            cs.room,
+
+            s.photo_path,
+
+            s.face_embedding
+
+        FROM students s
+
+        JOIN enrollments e
+            ON s.id = e.student_id
+
+        JOIN course_sections cs
+            ON e.section_id = cs.id
+
+        JOIN courses c
+            ON cs.course_id = c.id
+
+        WHERE
+            e.section_id = ?
+            AND s.face_embedding IS NOT NULL
+        """,
+        (section_id,)
+    )
+
+    rows = cursor.fetchall()
+
+    students = []
+
+    for row in rows:
+
+        students.append(
+            (
+                row[0],      # student_id
+                row[1],      # student_code
+                row[2],      # full_name
+
+                row[3],      # course_name
+
+                row[4],      # section_name
+
+                row[5],      # room
+
+                row[6],      # photo_path (filename only, or None)
+
+                json_to_embedding(row[7])   # embedding - always LAST
+            )
+        )
+
+    conn.close()
+
+    print(f"Loaded {len(students)} students")
+
+    return True
+
+
 # ==========================================
-# 4. Vòng lặp realtime
+# Process One Frame
 # ==========================================
 
-while True:
+def process_frame(frame):
 
-    # Đọc frame từ camera
-    ret, frame = cap.read()
+    global attendance_cache
+    global verified_cache
+    global blink_counters
+    global liveness_verifiers
 
-    if not ret:
-        break
+    info = None
+
+    # Defaults so these are always defined, even if
+    # no face is detected in this frame at all, or if
+    # the detected face doesn't match any known student.
+    best_student = None
+    similarity = 0
+    student_id = None
+    student_code = None
+    full_name = None
+    course_name = None
+    section_name = None
+    room = None
+    photo_path = None
+    verified = False
 
     # ======================================
     # Detect tất cả khuôn mặt trong frame
@@ -202,27 +219,27 @@ while True:
 
     faces = app.get(frame)
     cv2.putText(
-    frame,
-    f"Faces: {len(faces)}",
-    (10, 30),
-    cv2.FONT_HERSHEY_SIMPLEX,
-    1,
-    (255, 0, 0),
-    2
+        frame,
+        f"Faces: {len(faces)}",
+        (10, 30),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1,
+        (255, 0, 0),
+        2
     )
 
     current_time = datetime.now().strftime(
-    "%Y-%m-%d %H:%M:%S"
+        "%Y-%m-%d %H:%M:%S"
     )
 
     cv2.putText(
-    frame,
-    current_time,
-    (10, 60),
-    cv2.FONT_HERSHEY_SIMPLEX,
-    0.6,
-    (255, 255, 255),
-    2
+        frame,
+        current_time,
+        (10, 60),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (255, 255, 255),
+        2
     )
 
     # ======================================
@@ -232,6 +249,7 @@ while True:
     for face in faces:
 
         # Embedding của khuôn mặt hiện tại
+
         current_embedding = face.embedding
 
         # Tìm sinh viên giống nhất
@@ -259,6 +277,14 @@ while True:
 
             full_name = best_student[2]
 
+            course_name = best_student[3]
+
+            section_name = best_student[4]
+
+            room = best_student[5]
+
+            photo_path = best_student[6]
+
             # ==========================
             # Blink Detection
             # ==========================
@@ -282,8 +308,6 @@ while True:
             ear = 0
 
             blink_detected = False
-
-            verified = False
 
             direction = "CENTER"
 
@@ -375,17 +399,14 @@ while True:
                         "RIGHT"
                     )
                 # ==========================
-                # VERIFIED
+                # VERIFIED (detect the moment
+                # it FIRST becomes true)
                 # ==========================
 
-                verified = (
+                if (
                     liveness_verifiers[
                         student_id
                     ].is_verified()
-                )
-                
-                if (
-                    verified
                     and not verified_cache.get(
                         student_id,
                         False
@@ -400,10 +421,25 @@ while True:
                     verified_cache[
                         student_id
                     ] = True
-            if verified_cache.get(
+
+            # ==========================
+            # Always read the DISPLAYED
+            # verified flag from the
+            # persistent cache, not from
+            # this single frame's result.
+            # Once a student is verified,
+            # it should stay "Present"
+            # even if a later frame briefly
+            # fails to detect eye landmarks
+            # (e.g. blur, angle, blink).
+            # ==========================
+
+            verified = verified_cache.get(
                 student_id,
                 False
-            ):
+            )
+
+            if verified:
 
                 process_attendance(
                     student_id=student_id,
@@ -412,6 +448,7 @@ while True:
                     session_id=current_session_id,
                     attendance_cache=attendance_cache
                 )
+
             # ==========================
             # Màu sắc theo độ tin cậy
             # ==========================
@@ -428,9 +465,9 @@ while True:
 
                 color = (0, 0, 255)
 
-    # ==========================
-    # Vẽ khung mặt
-    # ==========================
+            # ==========================
+            # Vẽ khung mặt
+            # ==========================
 
             draw_recognized_face(
                 frame=frame,
@@ -452,6 +489,7 @@ while True:
                     student_id
                 ]
             )
+
         # ==================================
         # Nếu không nhận diện được
         # ==================================
@@ -466,23 +504,67 @@ while True:
                 y2
             )
 
-    # ======================================
-    # Hiển thị frame sau khi xử lý
-    # ======================================
+    if best_student is not None:
 
-    cv2.imshow(
-        "Face Recognition",
-        frame
-    )
+        # photo_path stored in DB is just a filename
+        # (e.g. "22010414.jpg") - resolve it to a full
+        # path the GUI can open directly.
+        photo_full_path = (
+            str(PHOTOS_DIR / photo_path)
+            if photo_path else None
+        )
 
-    # ESC để thoát
-    if cv2.waitKey(1) == 27:
-        break
+        info = {
+            "student_id": student_id,
+            "student_code": student_code,
+            "full_name": full_name,
+            "course": course_name,
+            "section": section_name,
+            "room": room,
+            "photo_path": photo_full_path,
+            "verified": verified,
+            "similarity": similarity,
+            "status": "Present" if verified else "Verifying...",
+            "time": current_time
+        }
+
+    return frame, info
+
 
 # ==========================================
-# 5. Giải phóng camera
+# Main loop
 # ==========================================
 
-cap.release()
+if __name__ == "__main__":
 
-cv2.destroyAllWindows()
+    if not initialize():
+
+        print("Could not start: no active session.")
+
+    else:
+
+        cap = cv2.VideoCapture(
+            0,
+            cv2.CAP_DSHOW
+        )
+
+        while True:
+
+            ret, frame = cap.read()
+
+            if not ret:
+                break
+
+            frame, info = process_frame(frame)
+
+            cv2.imshow(
+                "Face Recognition",
+                frame
+            )
+
+            if cv2.waitKey(1) == 27:
+                break
+
+        cap.release()
+
+        cv2.destroyAllWindows()

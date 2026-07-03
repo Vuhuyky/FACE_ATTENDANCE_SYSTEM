@@ -4,202 +4,332 @@ import subprocess
 import sys
 
 
-def open_add_student():
+def open_module(module_name):
 
-    subprocess.Popen(
-        [
-            sys.executable,
-            "gui/add_student.py"
-        ]
-    )
+    try:
+        subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                module_name
+            ]
+        )
 
-def open_register_face():
+    except Exception as e:
 
-    subprocess.Popen(
-        [
-            sys.executable,
-            "face_recognition/register_face.py"
-        ]
-    )
-
-def start_recognition():
-
-    subprocess.Popen(
-        [
-            sys.executable,
-            "-m",
-            "face_recognition.recognize_face"
-        ]
-    )
-
-def open_student_management():
-
-    subprocess.Popen(
-        [
-            sys.executable,
-            "GUI/student_management.py"
-        ]
-    )
-
-def create_session():
-
-    subprocess.run(
-        [
-            sys.executable,
-            "attendance/create_session.py"
-        ]
-    )
-
-    messagebox.showinfo(
-        "Success",
-        "Session created!"
-    )
+        messagebox.showerror(
+            "Error",
+            str(e)
+        )
 
 
-def show_report():
+def exit_program():
 
-    subprocess.run(
-        [
-            sys.executable,
-            "attendance/attendance_report.py"
-        ]
-    )
+    if messagebox.askyesno(
+        "Exit",
+        "Do you want to exit?"
+    ):
 
-
-def export_excel():
-
-    subprocess.run(
-        [
-            sys.executable,
-            "attendance/export_excel.py"
-        ]
-    )
-
-    messagebox.showinfo(
-        "Success",
-        "Excel exported!"
-    )
+        root.destroy()
 
 
 root = tk.Tk()
 
-root.title(
-    "Face Attendance System"
-)
+root.title("Face Attendance System")
 
-root.geometry(
-    "500x400"
-)
+root.geometry("700x550")
 
+root.resizable(False, False)
+
+
+# ===========================
+# Title
+# ===========================
 
 title = tk.Label(
     root,
     text="FACE ATTENDANCE SYSTEM",
-    font=("Arial", 18, "bold")
+    font=("Arial", 22, "bold"),
+    fg="blue"
 )
 
 title.pack(
     pady=20
 )
 
-btn_add_student = tk.Button(
-    root,
-    text="Add Student",
-    width=25,
-    height=2,
-    command=open_add_student
+
+# ===========================
+# Menu Frame
+# ===========================
+
+frame = tk.Frame(root)
+
+frame.pack(
+    pady=20
 )
 
-btn_add_student.pack(
+
+button_width = 22
+button_height = 2
+
+
+# ===========================
+# Row 1
+# ===========================
+
+tk.Button(
+
+    frame,
+
+    text="Student Manager",
+
+    width=button_width,
+
+    height=button_height,
+
+    command=lambda: open_module(
+        "GUI.student_management"
+    )
+
+).grid(
+    row=0,
+    column=0,
+    padx=15,
     pady=10
 )
 
-btn_student = tk.Button(
-    root,
-    text="Student Management",
-    width=25,
-    height=2,
-    command=open_student_management
-)
 
-btn_student.pack(
+tk.Button(
+
+    frame,
+
+    text="Course Manager",
+
+    width=button_width,
+
+    height=button_height,
+
+    command=lambda: open_module(
+        "GUI.course_manager"
+    )
+
+).grid(
+    row=0,
+    column=1,
+    padx=15,
     pady=10
 )
 
-btn_register_face = tk.Button(
-    root,
+
+# ===========================
+# Row 2
+# ===========================
+
+tk.Button(
+
+    frame,
+
+    text="Section Manager",
+
+    width=button_width,
+
+    height=button_height,
+
+    command=lambda: open_module(
+        "GUI.section_manager"
+    )
+
+).grid(
+    row=1,
+    column=0,
+    padx=15,
+    pady=10
+)
+
+
+tk.Button(
+
+    frame,
+
+    text="Schedule Manager",
+
+    width=button_width,
+
+    height=button_height,
+
+    command=lambda: open_module(
+        "GUI.schedule_manager"
+    )
+
+).grid(
+    row=1,
+    column=1,
+    padx=15,
+    pady=10
+)
+
+
+# ===========================
+# Row 3
+# ===========================
+
+tk.Button(
+
+    frame,
+
+    text="Enrollment Manager",
+
+    width=button_width,
+
+    height=button_height,
+
+    command=lambda: open_module(
+        "GUI.enrollment_manager"
+    )
+
+).grid(
+    row=2,
+    column=0,
+    padx=15,
+    pady=10
+)
+
+
+tk.Button(
+
+    frame,
+
+    text="Session Manager",
+
+    width=button_width,
+
+    height=button_height,
+
+    command=lambda: open_module(
+        "GUI.session_manager"
+    )
+
+).grid(
+    row=2,
+    column=1,
+    padx=15,
+    pady=10
+)
+
+
+# ===========================
+# Row 4
+# ===========================
+
+tk.Button(
+
+    frame,
+
     text="Register Face",
-    width=25,
-    height=2,
-    command=open_register_face
-)
 
-btn_register_face.pack(
-    pady=10
-)
+    width=button_width,
 
-btn1 = tk.Button(
-    root,
-    text="Start Recognition",
-    width=25,
-    height=2,
-    command=start_recognition
-)
+    height=button_height,
 
-btn1.pack(
+    command=lambda: open_module(
+        "face_recognition.register_face"
+    )
+
+).grid(
+    row=3,
+    column=0,
+    padx=15,
     pady=10
 )
 
 
-btn2 = tk.Button(
-    root,
-    text="Create Session",
-    width=25,
-    height=2,
-    command=create_session
-)
+tk.Button(
 
-btn2.pack(
+    frame,
+
+    text="Attendance",
+
+    width=button_width,
+
+    height=button_height,
+
+    command=lambda: open_module(
+        "GUI.attendance_gui"
+    )
+
+).grid(
+    row=3,
+    column=1,
+    padx=15,
     pady=10
 )
 
 
-btn3 = tk.Button(
-    root,
+# ===========================
+# Row 5
+# ===========================
+
+tk.Button(
+
+    frame,
+
     text="Attendance Report",
-    width=25,
-    height=2,
-    command=show_report
-)
 
-btn3.pack(
+    width=button_width,
+
+    height=button_height,
+
+    command=lambda: open_module(
+        "attendance.attendance_report"
+    )
+
+).grid(
+    row=4,
+    column=0,
+    padx=15,
     pady=10
 )
 
 
-btn4 = tk.Button(
-    root,
-    text="Export Excel",
-    width=25,
-    height=2,
-    command=export_excel
-)
+tk.Button(
 
-btn4.pack(
-    pady=10
-)
+    frame,
 
-
-btn5 = tk.Button(
-    root,
     text="Exit",
-    width=25,
-    height=2,
-    command=root.destroy
+
+    width=button_width,
+
+    height=button_height,
+
+    bg="red",
+
+    fg="white",
+
+    command=exit_program
+
+).grid(
+    row=4,
+    column=1,
+    padx=15,
+    pady=10
 )
 
-btn5.pack(
-    pady=10
+
+# ===========================
+
+tk.Label(
+
+    root,
+
+    text="Graduation Project - Face Attendance System",
+
+    font=("Arial", 10),
+
+    fg="gray"
+
+).pack(
+    side="bottom",
+    pady=15
 )
 
 

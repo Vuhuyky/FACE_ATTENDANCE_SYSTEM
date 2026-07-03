@@ -76,6 +76,110 @@ def load_schedules():
             )
         )
 
+def open_add_schedule():
+
+    subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "GUI.add_schedule"
+        ]
+    )
+
+def edit_schedule():
+
+    selected = schedule_tree.selection()
+
+    if not selected:
+
+        messagebox.showwarning(
+            "Warning",
+            "Please select a schedule."
+        )
+
+        return
+
+    values = schedule_tree.item(
+        selected[0],
+        "values"
+    )
+
+    schedule_id = values[0]
+
+    subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "GUI.edit_schedule",
+            str(schedule_id)
+        ]
+    )
+
+def delete_schedule():
+
+    selected = schedule_tree.selection()
+
+    if not selected:
+
+        messagebox.showwarning(
+            "Warning",
+            "Please select a schedule."
+        )
+
+        return
+
+    values = schedule_tree.item(
+        selected[0],
+        "values"
+    )
+
+    schedule_id = values[0]
+
+    answer = messagebox.askyesno(
+        "Confirm",
+        "Delete this schedule?"
+    )
+
+    if not answer:
+
+        return
+
+    conn = get_connection()
+
+    cursor = conn.cursor()
+
+    try:
+
+        cursor.execute(
+            """
+            DELETE FROM schedules
+            WHERE id = ?
+            """,
+            (
+                schedule_id,
+            )
+        )
+
+        conn.commit()
+
+        load_schedules()
+
+        messagebox.showinfo(
+            "Success",
+            "Schedule deleted successfully."
+        )
+
+    except Exception as e:
+
+        messagebox.showerror(
+            "Database Error",
+            str(e)
+        )
+
+    finally:
+
+        conn.close()
+
 root = tk.Tk()
 
 root.title(
@@ -86,10 +190,11 @@ root.geometry(
     "760x500"
 )
 
+
 schedule_tree = ttk.Treeview(
 
     root,
-
+    
     columns=(
 
         "ID",
@@ -105,6 +210,7 @@ schedule_tree = ttk.Treeview(
     height=15
 
 )
+
 
 schedule_tree.heading(
     "ID",
@@ -165,7 +271,46 @@ schedule_tree.pack(
     fill="both",
     expand=True
 )
+button_frame = tk.Frame(root)
 
+button_frame.pack(
+    pady=10
+)
+
+btn_add = tk.Button(
+    button_frame,
+    text="Add",
+    width=12,
+    command=open_add_schedule
+)
+
+btn_add.pack(
+    side=tk.LEFT,
+    padx=5
+)
+
+btn_edit = tk.Button(
+    button_frame,
+    text="Edit",
+    width=12,
+    command=edit_schedule
+)
+
+btn_edit.pack(
+    side=tk.LEFT,
+    padx=5
+)
+
+btn_delete = tk.Button(
+    button_frame,
+    text="Delete",
+    width=12,
+    command=delete_schedule
+)
+
+btn_delete.pack(
+    side=tk.LEFT,
+    padx=5
+)
 load_schedules()
-
 root.mainloop()

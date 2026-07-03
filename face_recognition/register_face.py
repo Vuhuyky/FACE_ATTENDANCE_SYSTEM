@@ -7,9 +7,9 @@ from tkinter import messagebox
 
 from insightface.app import FaceAnalysis
 
-from utils import embedding_to_json
+from .utils import embedding_to_json
 
-from database.connection import get_connection
+from database.connection import get_connection, PHOTOS_DIR
 
 # =====================
 # Load Face Model
@@ -115,6 +115,8 @@ def register_face():
 
     embeddings = []
 
+    photo_filename = None
+
     cap = cv2.VideoCapture(0)
 
     print()
@@ -154,6 +156,42 @@ def register_face():
                 embedding
             )
 
+            # ==========================
+            # Save a photo the FIRST time
+            # we successfully capture a
+            # face for this student.
+            # ==========================
+
+            if photo_filename is None:
+
+                box = faces[0].bbox.astype(int)
+
+                x1, y1, x2, y2 = box
+
+                x1 = max(x1, 0)
+                y1 = max(y1, 0)
+
+                face_crop = frame[y1:y2, x1:x2]
+
+                if face_crop.size > 0:
+
+                    photo_filename = (
+                        f"{student_code}.jpg"
+                    )
+
+                    photo_full_path = (
+                        PHOTOS_DIR / photo_filename
+                    )
+
+                    cv2.imwrite(
+                        str(photo_full_path),
+                        face_crop
+                    )
+
+                    print(
+                        f"Saved photo: {photo_full_path}"
+                    )
+
             print(
                 f"Captured {len(embeddings)}/5"
             )
@@ -188,11 +226,13 @@ def register_face():
     cursor.execute(
         """
         UPDATE students
-        SET face_embedding = ?
+        SET face_embedding = ?,
+            photo_path = COALESCE(?, photo_path)
         WHERE student_code = ?
         """,
         (
             embedding_json,
+            photo_filename,
             student_code
         )
     )

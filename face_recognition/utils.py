@@ -36,10 +36,15 @@ def find_best_match(
     """
     students:
     [
-        (student_code,
-         full_name,
-         embedding)
+        (student_id, student_code, full_name,
+         ..., embedding)
     ]
+
+    NOTE: `embedding` is always read from the LAST
+    position of the tuple (student[-1]), not a fixed
+    index, so this keeps working no matter how many
+    extra descriptive fields (course, section, room,
+    photo_path, ...) get added in between.
     """
 
     best_similarity = -1
@@ -47,10 +52,7 @@ def find_best_match(
 
     for student in students:
 
-        student_id = student[0]
-        student_code = student[1]
-        full_name = student[2]
-        embedding = student[3]
+        embedding = student[-1]
 
         similarity = cosine_similarity(
             current_embedding,

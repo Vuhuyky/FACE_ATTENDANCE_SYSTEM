@@ -62,10 +62,42 @@ def open_add_student():
     subprocess.Popen(
         [
             sys.executable,
-            "GUI/add_student.py"
+            "-m",
+            "GUI.add_student"
         ]
     )
 
+# =====================================
+# Edit Student
+# =====================================
+
+def edit_student():
+
+    selected = tree.selection()
+
+    if not selected:
+
+        messagebox.showwarning(
+            "Warning",
+            "Please select a student."
+        )
+
+        return
+
+    values = tree.item(
+        selected[0]
+    )["values"]
+
+    student_code = str(values[0])
+
+    subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "GUI.edit_student",
+            student_code
+        ]
+    )
 
 # =====================================
 # Delete Student
@@ -88,7 +120,7 @@ def delete_student():
         selected[0]
     )["values"]
 
-    student_code = values[0]
+    student_code = str(values[0])
 
     answer = messagebox.askyesno(
         "Confirm",
@@ -103,22 +135,81 @@ def delete_student():
 
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
-        SELECT id
-        FROM students
-        WHERE student_code=?
-        """,
-        (
-            student_code,
+    try:
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM students
+            WHERE student_code=?
+            """,
+            (
+                student_code,
+            )
         )
-    )
 
-    student = cursor.fetchone()
+        student = cursor.fetchone()
 
-    if student:
+        if not student:
+
+            messagebox.showerror(
+                "Error",
+                "Student not found."
+            )
+
+            return
 
         student_id = student[0]
+
+        # ==========================================
+        # Check attendance history BEFORE deleting.
+        # attendance_records.student_id has a FOREIGN
+        # KEY to students(id), so deleting the student
+        # first would fail with an IntegrityError if
+        # any attendance was ever recorded for them.
+        # ==========================================
+
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM attendance_records
+            WHERE student_id=?
+            """,
+            (
+                student_id,
+            )
+        )
+
+        record_count = cursor.fetchone()[0]
+
+        if record_count > 0:
+
+            cascade = messagebox.askyesno(
+                "Attendance History Found",
+                f"'{student_code}' has {record_count} "
+                f"attendance record(s).\n\n"
+                "Deleting this student will also "
+                "PERMANENTLY erase that attendance "
+                "history.\n\n"
+                "Do you want to delete the student "
+                "AND their attendance history?"
+            )
+
+            if not cascade:
+
+                # Blocked by default: leave everything
+                # untouched.
+                return
+
+            cursor.execute(
+                """
+                DELETE FROM attendance_records
+                WHERE student_id=?
+                """,
+                (
+                    student_id,
+                )
+            )
 
         cursor.execute(
             """
@@ -140,9 +231,22 @@ def delete_student():
             )
         )
 
-    conn.commit()
+        conn.commit()
 
-    conn.close()
+    except sqlite3.Error as error:
+
+        conn.rollback()
+
+        messagebox.showerror(
+            "Database Error",
+            f"Could not delete student:\n{error}"
+        )
+
+        return
+
+    finally:
+
+        conn.close()
 
     load_students()
 
@@ -237,12 +341,23 @@ tk.Button(
 
 tk.Button(
     button_frame,
+    text="Edit Student",
+    width=15,
+    command=edit_student
+).grid(
+    row=0,
+    column=2,
+    padx=5
+)
+
+tk.Button(
+    button_frame,
     text="Delete Student",
     width=15,
     command=delete_student
 ).grid(
     row=0,
-    column=2,
+    column=3,
     padx=5
 )
 
@@ -253,7 +368,7 @@ tk.Button(
     command=register_face
 ).grid(
     row=0,
-    column=3,
+    column=4,
     padx=5
 )
 
@@ -264,7 +379,7 @@ tk.Button(
     command=root.destroy
 ).grid(
     row=0,
-    column=4,
+    column=5,
     padx=5
 )
 
