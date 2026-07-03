@@ -537,16 +537,38 @@ root.title(
     "Course Manager"
 )
 
+# The window used to be a HARDCODED 1400x950 with
+# resizable(False, False). That fit a large desktop
+# monitor, but on a laptop with a shorter screen (e.g.
+# 1366x768), the window was TALLER than the screen itself
+# - so the bottom Add/Edit/Delete button row was pushed
+# below the visible screen area, with no way to resize
+# down to reach it.
+#
+# Fix: size the window relative to the ACTUAL screen
+# resolution (capped at a sensible max), and allow
+# resizing so it's never stuck too big for the display.
+
+screen_width = root.winfo_screenwidth()
+screen_height = root.winfo_screenheight()
+
+window_width = min(1400, screen_width - 80)
+
+# Leave room for the taskbar / title bar.
+window_height = min(950, screen_height - 100)
+
 root.geometry(
-    "1400x950"
+    f"{window_width}x{window_height}"
 )
+
 root.minsize(
-    1200,
-    850
+    900,
+    600
 )
+
 root.resizable(
-    False,
-    False
+    True,
+    True
 )
 
 
@@ -776,7 +798,7 @@ schedule_tree = ttk.Treeview(
 
     show="headings",
 
-    height=10
+    height=5
 
 )
 
