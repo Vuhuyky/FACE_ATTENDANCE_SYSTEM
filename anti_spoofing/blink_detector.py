@@ -53,23 +53,23 @@ blink_counter = 0
 
 eye_closed = False
 
-def detect_blink(
-    ear,
-    threshold=0.25
-):
-    global blink_counter
-    global eye_closed
+# def detect_blink(
+#     ear,
+#     threshold=0.25
+# ):
+#     global blink_counter
+#     global eye_closed
 
-    if ear < threshold:
+#     if ear < threshold:
 
-        eye_closed = True
+#         eye_closed = True
 
-    elif ear >= threshold and eye_closed:
+#     elif ear >= threshold and eye_closed:
 
-        blink_counter += 1
+#         blink_counter += 1
 
-        eye_closed = False
+#         eye_closed = False
 
-        return True
+#         return True
 
-    return False
+#     return False

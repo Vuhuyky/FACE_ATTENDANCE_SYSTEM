@@ -29,15 +29,6 @@ class LivenessVerifier:
 
     def is_verified(self):
 
-        # print(
-        #     "Blink:",
-        #     self.blinked,
-        #     "| Left:",
-        #     self.looked_left,
-        #     "| Right:",
-        #     self.looked_right
-        # )
-
         if (
             self.blinked
             and self.looked_left

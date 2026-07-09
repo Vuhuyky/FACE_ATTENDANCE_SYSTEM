@@ -33,19 +33,19 @@ def auto_session_manager():
     cursor = conn.cursor()
 
     # ==================================================
-    # STEP 1 - CLOSE OVERDUE SESSIONS
+    # BƯỚC 1 - ĐÓNG CÁC PHIÊN ĐIỂM DANH QUÁ GIỜ
     # --------------------------------------------------
-    # This looks at EVERY currently active session and
-    # compares its real (session_date + end_time) against
-    # right now - regardless of what today's weekday is.
+    # Đoạn này sẽ kiểm tra TẤT CẢ các phiên hiện đang hoạt động
+    # và so sánh thời gian thực tế của nó (ngày_phiên + giờ_kết_thúc)
+    # với thời gian hiện tại - bất kể hôm nay là thứ mấy trong tuần.
     #
-    # The old version only closed sessions belonging to
-    # TODAY's weekday schedule. That meant a session left
-    # open past its end time (e.g. nobody ran the app right
-    # at closing time) would never get closed once the
-    # calendar moved to a different weekday, because that
-    # schedule row simply wasn't looked at anymore until the
-    # same weekday came around again.
+    # Phiên bản cũ chỉ đóng các phiên thuộc về lịch trình của 
+    # thứ (ngày trong tuần) ngày HÔM NAY. Điều đó có nghĩa là một phiên 
+    # bị bỏ quên không đóng khi hết giờ (ví dụ: không ai bật ứng dụng 
+    # vào đúng thời điểm kết thúc lớp) sẽ không bao giờ được đóng một khi
+    # lịch đã chuyển sang một thứ khác trong tuần, bởi vì dòng lịch trình 
+    # đó đơn giản là không được ngó ngàng tới nữa cho đến khi đúng thứ đó
+    # của tuần sau quay trở lại.
     # ==================================================
 
     cursor.execute(
@@ -99,13 +99,13 @@ def auto_session_manager():
 
     conn.commit()
 
-    # ==================================================
-    # STEP 2 - OPEN TODAY'S SCHEDULED SESSIONS
-    # --------------------------------------------------
-    # Unchanged: only today's weekday schedules are
-    # relevant for deciding whether a NEW session should
-    # be opened right now.
-    # ==================================================
+# ==================================================
+# BƯỚC 2 - MỞ CÁC PHIÊN ĐIỂM DANH THEO LỊCH TRÌNH HÔM NAY
+# --------------------------------------------------
+# Giữ nguyên: chỉ có lịch trình của thứ (ngày trong tuần)
+# ngày hôm nay mới có giá trị để quyết định xem một phiên 
+# MỚI có nên được mở vào ngay thời điểm này hay không.
+# ==================================================
 
     cursor.execute(
         """

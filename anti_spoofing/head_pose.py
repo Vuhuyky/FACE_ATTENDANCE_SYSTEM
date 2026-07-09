@@ -25,6 +25,4 @@ def get_head_direction(face):
     elif offset < -10:
         return "LEFT"
 
-        return "LEFT"
-
     return "CENTER"

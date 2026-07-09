@@ -37,7 +37,7 @@ def find_best_match(
     students:
     [
         (student_id, student_code, full_name,
-         ..., embedding)
+        ..., embedding)
     ]
 
     NOTE: `embedding` is always read from the LAST
