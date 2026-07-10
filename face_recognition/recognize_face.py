@@ -1,11 +1,9 @@
 import cv2
-import sqlite3
+
 from datetime import datetime
 from insightface.app import FaceAnalysis
-import time
-from database.connection import get_connection, PHOTOS_DIR
 
-from face_recognition.draw_face_info import draw_face_info
+from database.connection import get_connection, PHOTOS_DIR
 
 from face_recognition.draw_utils import (
     draw_recognized_face,
