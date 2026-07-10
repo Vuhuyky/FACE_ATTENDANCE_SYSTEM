@@ -487,19 +487,19 @@ def load_schedules():
 
     weekday_name = {
 
-        0: "Monday",
+        1: "Monday",
 
-        1: "Tuesday",
+        2: "Tuesday",
 
-        2: "Wednesday",
+        3: "Wednesday",
 
-        3: "Thursday",
+        4: "Thursday",
 
-        4: "Friday",
+        5: "Friday",
 
-        5: "Saturday",
+        6: "Saturday",
 
-        6: "Sunday"
+        7: "Sunday"
 
     }
 
