@@ -38,14 +38,6 @@ def auto_session_manager():
     # Đoạn này sẽ kiểm tra TẤT CẢ các phiên hiện đang hoạt động
     # và so sánh thời gian thực tế của nó (ngày_phiên + giờ_kết_thúc)
     # với thời gian hiện tại - bất kể hôm nay là thứ mấy trong tuần.
-    #
-    # Phiên bản cũ chỉ đóng các phiên thuộc về lịch trình của 
-    # thứ (ngày trong tuần) ngày HÔM NAY. Điều đó có nghĩa là một phiên 
-    # bị bỏ quên không đóng khi hết giờ (ví dụ: không ai bật ứng dụng 
-    # vào đúng thời điểm kết thúc lớp) sẽ không bao giờ được đóng một khi
-    # lịch đã chuyển sang một thứ khác trong tuần, bởi vì dòng lịch trình 
-    # đó đơn giản là không được ngó ngàng tới nữa cho đến khi đúng thứ đó
-    # của tuần sau quay trở lại.
     # ==================================================
 
     cursor.execute(
@@ -102,9 +94,9 @@ def auto_session_manager():
 # ==================================================
 # BƯỚC 2 - MỞ CÁC PHIÊN ĐIỂM DANH THEO LỊCH TRÌNH HÔM NAY
 # --------------------------------------------------
-# Giữ nguyên: chỉ có lịch trình của thứ (ngày trong tuần)
+# Giữ nguyên: chỉ có lịch trình của thứ,
 # ngày hôm nay mới có giá trị để quyết định xem một phiên 
-# MỚI có nên được mở vào ngay thời điểm này hay không.
+# mới có nên được mở vào ngay thời điểm này hay không.
 # ==================================================
 
     cursor.execute(

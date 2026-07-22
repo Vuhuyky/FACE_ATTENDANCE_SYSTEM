@@ -49,27 +49,3 @@ def get_eye_landmarks(face):
         right_eye
     )
 
-blink_counter = 0
-
-eye_closed = False
-
-# def detect_blink(
-#     ear,
-#     threshold=0.25
-# ):
-#     global blink_counter
-#     global eye_closed
-
-#     if ear < threshold:
-
-#         eye_closed = True
-
-#     elif ear >= threshold and eye_closed:
-
-#         blink_counter += 1
-
-#         eye_closed = False
-
-#         return True
-
-#     return False

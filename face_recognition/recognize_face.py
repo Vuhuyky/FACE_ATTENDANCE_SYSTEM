@@ -197,9 +197,6 @@ def process_frame(frame):
 
     info = None
 
-    # Defaults so these are always defined, even if
-    # no face is detected in this frame at all, or if
-    # the detected face doesn't match any known student.
     best_student = None
     similarity = 0
     student_id = None
@@ -420,18 +417,6 @@ def process_frame(frame):
                         student_id
                     ] = True
 
-            # ==========================
-            # Always read the DISPLAYED
-            # verified flag from the
-            # persistent cache, not from
-            # this single frame's result.
-            # Once a student is verified,
-            # it should stay "Present"
-            # even if a later frame briefly
-            # fails to detect eye landmarks
-            # (e.g. blur, angle, blink).
-            # ==========================
-
             verified = verified_cache.get(
                 student_id,
                 False
@@ -503,10 +488,6 @@ def process_frame(frame):
             )
 
     if best_student is not None:
-
-        # photo_path stored in DB is just a filename
-        # (e.g. "22010414.jpg") - resolve it to a full
-        # path the GUI can open directly.
         photo_full_path = (
             str(PHOTOS_DIR / photo_path)
             if photo_path else None

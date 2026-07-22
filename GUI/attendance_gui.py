@@ -19,11 +19,6 @@ class AttendanceGUI:
 
     def __init__(self):
 
-        # Load the face-recognition model, session and
-        # student list BEFORE doing anything else. If this
-        # fails (e.g. no active session), process_frame()
-        # would otherwise crash on app.get(frame) because
-        # `app` is still None.
         self.engine_ready = initialize()
 
         self.root = tk.Tk()
@@ -166,11 +161,6 @@ class AttendanceGUI:
                 padx=25
             )
 
-        # A Label's width/height mean CHARACTERS while showing
-        # text, but PIXELS once an image is set - so reusing
-        # the same Label for both caused it to collapse to a
-        # tiny 20x10 pixel box the moment a photo loaded.
-        # Fixing the CONTAINER's pixel size instead avoids that.
         self.photo_frame = tk.Frame(
             right,
             width=100,
@@ -197,13 +187,8 @@ class AttendanceGUI:
             expand=True
         )
 
-        # Keep a reference to the currently displayed
-        # PhotoImage so Tk doesn't garbage-collect it.
         self.current_photo_image = None
 
-        # Track the last photo path we successfully loaded,
-        # so we don't re-open/re-decode the same file on
-        # every single frame.
         self.last_photo_path = None
 
         self.status_label = tk.Label(
@@ -299,11 +284,6 @@ class AttendanceGUI:
 
         self.last_student = None
 
-        # Track the last STATUS we logged for the current
-        # student, so a "Verifying..." -> "Present" change
-        # gets its own log row instead of being silently
-        # dropped (previously only a student CHANGE added
-        # a new row, so status updates never appeared).
         self.last_status = None
 
         self.root.protocol(
@@ -400,8 +380,6 @@ class AttendanceGUI:
 
             return
 
-        # Already showing this exact photo - skip re-decoding
-        # it every frame.
         if photo_path == self.last_photo_path:
 
             return
@@ -422,9 +400,6 @@ class AttendanceGUI:
 
             image = Image.open(photo_path)
 
-            # thumbnail() preserves aspect ratio (unlike
-            # resize(), which would stretch/distort a
-            # non-square face crop to fit a square box).
             image.thumbnail(
                 (
                     140,
@@ -515,11 +490,6 @@ class AttendanceGUI:
 
             )
 
-        # Log a new row when the STUDENT changes, OR when
-        # the same student's STATUS changes (e.g. moves from
-        # "Verifying..." to "Present"). Previously this only
-        # checked the student, so a status change was never
-        # reflected in the log after the first row was added.
         student_changed = (
             self.last_student != info["student_code"]
         )

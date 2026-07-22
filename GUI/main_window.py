@@ -39,7 +39,7 @@ root.title("Face Attendance System")
 
 root.geometry("700x550")
 
-root.resizable(False, False)
+root.resizable(True, True)
 
 
 # ===========================
